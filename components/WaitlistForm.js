@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { trackWaitlistSignup, trackFormInteraction, trackError } from '../lib/analytics';
 import { useAccessibility } from './AccessibilityProvider';
 
@@ -26,7 +26,7 @@ const ERROR_MESSAGES = {
   REQUIRED_FIELD: 'Email is required.'
 };
 
-export default function WaitlistForm({ location = 'unknown' }) {
+export default function WaitlistForm({ location = 'unknown', onSuccess }) {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -202,6 +202,11 @@ export default function WaitlistForm({ location = 'unknown' }) {
         
         // Announce success to screen readers
         announce('Successfully joined the waitlist! You will receive updates when the app launches.', 'assertive');
+        
+        // Call onSuccess callback if provided
+        if (onSuccess) {
+          onSuccess();
+        }
       } else {
         const errorData = result.response ? await result.response.json().catch(() => ({})) : {};
         const errorClassification = classifyError(result.error || new Error('API Error'), result.response);
@@ -227,7 +232,7 @@ export default function WaitlistForm({ location = 'unknown' }) {
     } finally {
       setIsLoading(false);
     }
-  }, [email, retrySubmission, classifyError, location]);
+  }, [email, retrySubmission, classifyError, location, announce, onSuccess]);
 
   // Manual retry function for user-initiated retries
   const handleRetry = useCallback(async () => {
