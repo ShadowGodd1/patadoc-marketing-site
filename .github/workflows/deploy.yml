@@ -1,0 +1,113 @@
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'patadoc-marketing-site/package-lock.json'
+          
+      - name: Install dependencies
+        working-directory: ./patadoc-marketing-site
+        run: npm ci
+        
+      - name: Run deployment tests
+        working-directory: ./patadoc-marketing-site
+        env:
+          EMAIL_SERVICE_TYPE: mailchimp
+          EMAIL_SERVICE_API_KEY: test-key-us1
+          EMAIL_SERVICE_AUDIENCE_ID: test-audience-id
+          NEXT_PUBLIC_SITE_URL: https://patadoc.com
+          NEXT_PUBLIC_GTM_CONTAINER_ID: GTM-TEST123
+          SKIP_BUILD_TEST: true
+        run: npm run deploy:test
+        
+      - name: Build project
+        working-directory: ./patadoc-marketing-site
+        env:
+          EMAIL_SERVICE_TYPE: mailchimp
+          EMAIL_SERVICE_API_KEY: test-key-us1
+          EMAIL_SERVICE_AUDIENCE_ID: test-audience-id
+          NEXT_PUBLIC_SITE_URL: https://patadoc.com
+          NEXT_PUBLIC_GTM_CONTAINER_ID: GTM-TEST123
+        run: npm run build
+
+  deploy-preview:
+    if: github.event_name == 'pull_request'
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'patadoc-marketing-site/package-lock.json'
+          
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+        
+      - name: Pull Vercel Environment Information
+        working-directory: ./patadoc-marketing-site
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        
+      - name: Build Project Artifacts
+        working-directory: ./patadoc-marketing-site
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+        
+      - name: Deploy Project Artifacts to Vercel
+        working-directory: ./patadoc-marketing-site
+        run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
+
+  deploy-production:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'patadoc-marketing-site/package-lock.json'
+          
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+        
+      - name: Pull Vercel Environment Information
+        working-directory: ./patadoc-marketing-site
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        
+      - name: Build Project Artifacts
+        working-directory: ./patadoc-marketing-site
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        
+      - name: Deploy Project Artifacts to Vercel
+        working-directory: ./patadoc-marketing-site
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
