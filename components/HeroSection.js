@@ -5,7 +5,7 @@ import FormErrorBoundary from './FormErrorBoundary';
 export default function HeroSection() {
   return (
     <section 
-      className="bg-off-white py-16 lg:py-24"
+      className="bg-off-white pt-8 pb-16 lg:pt-12 lg:pb-24"
       aria-labelledby="hero-heading"
       role="banner"
     >
